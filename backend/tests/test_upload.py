@@ -1,8 +1,13 @@
 from pathlib import Path
+from unittest.mock import AsyncMock, patch
 
 import pymupdf
 import pytest
 from fastapi.testclient import TestClient
+
+
+def _mock_ingest(chunk_count: int = 5):
+    return patch("app.routes.upload.ingest_pdf", new_callable=AsyncMock, return_value=chunk_count)
 
 
 def test_upload_pdf(client: TestClient, sample_pdf: Path, tmp_path: Path, monkeypatch):
@@ -10,7 +15,7 @@ def test_upload_pdf(client: TestClient, sample_pdf: Path, tmp_path: Path, monkey
 
     monkeypatch.setattr(upload_module, "UPLOAD_DIR", tmp_path)
 
-    with open(sample_pdf, "rb") as f:
+    with _mock_ingest(), open(sample_pdf, "rb") as f:
         response = client.post(
             "/api/upload",
             files=[("files", ("sample.pdf", f, "application/pdf"))],
@@ -22,6 +27,7 @@ def test_upload_pdf(client: TestClient, sample_pdf: Path, tmp_path: Path, monkey
     assert data[0]["filename"] == "sample.pdf"
     assert data[0]["pages"] == 2
     assert data[0]["size"] > 0
+    assert data[0]["chunk_count"] == 5
     assert (tmp_path / "sample.pdf").exists()
 
 
@@ -42,16 +48,16 @@ def test_upload_warns_image_only_pdf(client: TestClient, tmp_path: Path, monkeyp
 
     monkeypatch.setattr(upload_module, "UPLOAD_DIR", tmp_path)
 
-    # Build a PDF with a blank page (no inserted text → image-only simulation)
     doc = pymupdf.open()
     doc.new_page()
     pdf_bytes = doc.tobytes()
     doc.close()
 
-    response = client.post(
-        "/api/upload",
-        files=[("files", ("scan.pdf", pdf_bytes, "application/pdf"))],
-    )
+    with _mock_ingest(0):
+        response = client.post(
+            "/api/upload",
+            files=[("files", ("scan.pdf", pdf_bytes, "application/pdf"))],
+        )
 
     assert response.status_code == 200
     data = response.json()
@@ -66,7 +72,7 @@ def test_upload_multiple_pdfs(
 
     monkeypatch.setattr(upload_module, "UPLOAD_DIR", tmp_path)
 
-    with open(sample_pdf, "rb") as f1, open(sample_pdf, "rb") as f2:
+    with _mock_ingest(), open(sample_pdf, "rb") as f1, open(sample_pdf, "rb") as f2:
         response = client.post(
             "/api/upload",
             files=[
