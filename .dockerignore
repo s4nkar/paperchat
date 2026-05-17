@@ -1,0 +1,16 @@
+.git
+.gitignore
+node_modules
+frontend/node_modules
+data/
+backend/.venv
+backend/venv
+backend/__pycache__
+backend/**/__pycache__
+**/*.pyc
+**/*.pyo
+.env
+.env.local
+*.log
+memory/
+.claude/
