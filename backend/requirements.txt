@@ -1,0 +1,9 @@
+fastapi==0.115.5
+uvicorn[standard]==0.32.1
+pydantic-settings==2.6.1
+pymupdf==1.24.14
+chromadb==0.5.23
+rank-bm25==0.2.2
+cohere==5.11.4
+httpx==0.28.1
+python-multipart==0.0.20
