@@ -11,10 +11,11 @@ router = APIRouter()
 
 class DocumentMeta(BaseModel):
     filename: str
-    size: int
+    size: int   # bytes
     pages: int
 
 
+# Module-level so tests can monkeypatch it
 UPLOAD_DIR = Path(settings.upload_dir)
 
 
@@ -32,6 +33,7 @@ async def upload(files: list[UploadFile] = File(...)) -> list[DocumentMeta]:
                 status_code=422, detail=f"{file.filename!r} is not a PDF"
             )
 
+        # Read once so we can write and parse from the same bytes without re-reading disk
         contents = await file.read()
         dest = UPLOAD_DIR / (file.filename or "upload.pdf")
         dest.write_bytes(contents)
