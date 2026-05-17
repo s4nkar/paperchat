@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import fitz
+import pymupdf
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
@@ -36,7 +36,7 @@ async def upload(files: list[UploadFile] = File(...)) -> list[DocumentMeta]:
         dest = UPLOAD_DIR / (file.filename or "upload.pdf")
         dest.write_bytes(contents)
 
-        doc = fitz.open(stream=contents, filetype="pdf")
+        doc = pymupdf.open(stream=contents, filetype="pdf")
         pages = doc.page_count
         doc.close()
 
