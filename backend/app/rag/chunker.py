@@ -5,6 +5,7 @@ import pymupdf
 
 from app.config import settings
 
+# Try coarse boundaries first (paragraphs), cascade to fine (words) only if needed
 _SEPARATORS = ["\n\n", "\n", ". ", " "]
 
 
@@ -12,12 +13,13 @@ _SEPARATORS = ["\n\n", "\n", ". ", " "]
 class Chunk:
     text: str
     filename: str
-    page: int
-    section: str
+    page: int       # 1-based
+    section: str    # nearest heading above this chunk on the same page
     chunk_index: int
 
 
 def _is_heading(line: str) -> bool:
+    # Short line, no sentence punctuation, starts with capital/digit, < 9 words → likely a title
     line = line.strip()
     if not line or not 3 <= len(line) <= 80:
         return False
@@ -31,7 +33,11 @@ def _is_heading(line: str) -> bool:
 
 
 def _merge_pieces(pieces: list[str], chunk_size: int, chunk_overlap: int) -> list[str]:
-    """Merge small pieces into chunks with piece-boundary overlap (LangChain-style)."""
+    """Merge pieces into chunks, keeping overlap at word/sentence boundaries.
+
+    Raw character overlap would cut mid-word, degrading embeddings. We slide a
+    window of whole pieces instead, which mirrors LangChain's approach.
+    """
     chunks: list[str] = []
     window: list[str] = []
     window_len = 0
@@ -40,7 +46,7 @@ def _merge_pieces(pieces: list[str], chunk_size: int, chunk_overlap: int) -> lis
         piece_len = len(piece)
         if window and window_len + 1 + piece_len > chunk_size:
             chunks.append(" ".join(window))
-            # Slide window back: drop pieces from the front until overlap fits
+            # Drop pieces from the front until the tail fits the overlap window
             while window and (window_len > chunk_overlap or window_len + 1 + piece_len > chunk_size):
                 window_len -= len(window[0]) + (1 if len(window) > 1 else 0)
                 window.pop(0)
@@ -53,11 +59,13 @@ def _merge_pieces(pieces: list[str], chunk_size: int, chunk_overlap: int) -> lis
 
 
 def _split_recursive(text: str, separators: list[str], chunk_size: int, chunk_overlap: int) -> list[str]:
+    """Recursively split using the coarsest separator present, avoiding pointless splits."""
     if not separators:
+        # Fallback: fixed-width character chunks
         step = max(1, chunk_size - chunk_overlap)
         return [text[i : i + chunk_size] for i in range(0, len(text), step)]
 
-    # Find the first separator that actually appears in the text
+    # Use the first separator that actually exists; skip down if the piece is still too large
     sep = separators[-1]
     rest: list[str] = []
     for i, s in enumerate(separators):
@@ -79,6 +87,7 @@ def _split_recursive(text: str, separators: list[str], chunk_size: int, chunk_ov
 
 
 def chunk_pdf(path: Path) -> list[Chunk]:
+    """Per-page chunking so every chunk carries an accurate page number for citations."""
     doc = pymupdf.open(str(path))
     all_chunks: list[Chunk] = []
     chunk_index = 0
@@ -89,6 +98,7 @@ def chunk_pdf(path: Path) -> list[Chunk]:
         if not text.strip():
             continue
 
+        # Update section label from the first heading-like line on this page
         for line in text.splitlines():
             if _is_heading(line):
                 current_section = line.strip()

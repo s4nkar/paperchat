@@ -6,6 +6,7 @@ from fastapi.testclient import TestClient
 
 from app.main import app
 
+# ~400 chars repeated so each page produces multiple chunks at chunk_size=512
 _PARA = (
     "Retrieval-augmented generation combines a dense retrieval step with a "
     "generative language model to produce grounded, cited answers. "
@@ -23,6 +24,7 @@ def client() -> TestClient:
 
 @pytest.fixture
 def sample_pdf(tmp_path: Path) -> Path:
+    # Two pages with headings so chunker tests exercise section detection
     doc = pymupdf.open()
 
     for heading, body in [
