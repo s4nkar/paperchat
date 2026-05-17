@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import pymupdf
 import pytest
 from fastapi.testclient import TestClient
 
@@ -34,6 +35,28 @@ def test_upload_rejects_non_pdf(client: TestClient, tmp_path: Path, monkeypatch)
         files=[("files", ("notes.txt", b"hello", "text/plain"))],
     )
     assert response.status_code == 422
+
+
+def test_upload_warns_image_only_pdf(client: TestClient, tmp_path: Path, monkeypatch):
+    import app.routes.upload as upload_module
+
+    monkeypatch.setattr(upload_module, "UPLOAD_DIR", tmp_path)
+
+    # Build a PDF with a blank page (no inserted text → image-only simulation)
+    doc = pymupdf.open()
+    doc.new_page()
+    pdf_bytes = doc.tobytes()
+    doc.close()
+
+    response = client.post(
+        "/api/upload",
+        files=[("files", ("scan.pdf", pdf_bytes, "application/pdf"))],
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data[0]["warning"] is not None
+    assert "scanned" in data[0]["warning"].lower()
 
 
 def test_upload_multiple_pdfs(

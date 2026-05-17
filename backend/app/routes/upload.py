@@ -9,10 +9,14 @@ from app.config import settings
 router = APIRouter()
 
 
+_MIN_CHARS_PER_PAGE = 50  # below this average → likely image-only
+
+
 class DocumentMeta(BaseModel):
     filename: str
     size: int   # bytes
     pages: int
+    warning: str | None = None
 
 
 # Module-level so tests can monkeypatch it
@@ -40,10 +44,23 @@ async def upload(files: list[UploadFile] = File(...)) -> list[DocumentMeta]:
 
         doc = pymupdf.open(stream=contents, filetype="pdf")
         pages = doc.page_count
+        total_chars = sum(len(doc[i].get_text("text")) for i in range(pages))
         doc.close()
 
+        warning = None
+        if pages > 0 and (total_chars / pages) < _MIN_CHARS_PER_PAGE:
+            warning = (
+                "This PDF appears to contain scanned images with no extractable text. "
+                "OCR is not supported — the document will not be searchable."
+            )
+
         results.append(
-            DocumentMeta(filename=file.filename or "", size=len(contents), pages=pages)
+            DocumentMeta(
+                filename=file.filename or "",
+                size=len(contents),
+                pages=pages,
+                warning=warning,
+            )
         )
 
     return results
