@@ -5,6 +5,7 @@ from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
 from app.config import settings
+from app.rag.ingest import ingest_pdf
 
 router = APIRouter()
 
@@ -16,6 +17,7 @@ class DocumentMeta(BaseModel):
     filename: str
     size: int   # bytes
     pages: int
+    chunk_count: int = 0
     warning: str | None = None
 
 
@@ -54,11 +56,14 @@ async def upload(files: list[UploadFile] = File(...)) -> list[DocumentMeta]:
                 "OCR is not supported — the document will not be searchable."
             )
 
+        chunk_count = await ingest_pdf(dest)
+
         results.append(
             DocumentMeta(
                 filename=file.filename or "",
                 size=len(contents),
                 pages=pages,
+                chunk_count=chunk_count,
                 warning=warning,
             )
         )
