@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     groq_model: str = "llama-3.3-70b-versatile"
     embedding_model: str = "jina-embeddings-v3"
     chroma_persist_dir: str = "/data/chroma"
+    upload_dir: str = "/data/uploads"
 
     chunk_size: int = 512
     chunk_overlap: int = 64
