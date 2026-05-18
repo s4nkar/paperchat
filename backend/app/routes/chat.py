@@ -7,6 +7,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 
 from app.config import settings
+from app.rag import question_cache
 from app.rag.llm import stream_tokens
 from app.rag.reranker import rerank
 from app.rag.retriever import retrieve
@@ -30,6 +31,14 @@ def _event(obj: dict) -> str:
 
 
 async def _stream(question: str) -> AsyncIterator[str]:
+    cached = question_cache.get(question)
+    if cached:
+        yield _event({"type": "sources", "data": cached["sources"]})
+        yield _event({"type": "token", "data": cached["answer"]})
+        yield _event({"type": "usage", "data": {"tokens": 0, "cached": True}})
+        yield _event({"type": "done"})
+        return
+
     try:
         chunks = await retrieve(question)
     except Exception as exc:
@@ -61,9 +70,15 @@ async def _stream(question: str) -> AsyncIterator[str]:
     ]
     yield _event({"type": "sources", "data": sources})
 
+    answer_parts: list[str] = []
+    token_count = 0
     try:
-        async for token in stream_tokens(question, chunks):
-            yield _event({"type": "token", "data": token})
+        async for item in stream_tokens(question, chunks):
+            if isinstance(item, int):
+                token_count = item
+            else:
+                answer_parts.append(item)
+                yield _event({"type": "token", "data": item})
     except httpx.HTTPStatusError as exc:
         yield _event({"type": "error", "data": f"LLM error: {exc.response.text}"})
         return
@@ -71,7 +86,14 @@ async def _stream(question: str) -> AsyncIterator[str]:
         yield _event({"type": "error", "data": f"LLM error: {exc}"})
         return
 
+    yield _event({"type": "usage", "data": {"tokens": token_count, "cached": False}})
     yield _event({"type": "done"})
+
+    question_cache.set(question, {
+        "sources": sources,
+        "answer": "".join(answer_parts),
+        "tokens": token_count,
+    })
 
 
 @router.post("/chat")

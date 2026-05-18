@@ -45,6 +45,14 @@ export default function MessageBubble({ message }: Props) {
         </div>
       )}
 
+      {!isUser && message.tokens !== undefined && (
+        <p className="text-[10px] text-muted-foreground px-1">
+          {message.cached
+            ? "cached · 0 tokens"
+            : `${message.tokens} tokens`}
+        </p>
+      )}
+
       {!isUser && message.sources && message.sources.length > 0 && (
         <div className="w-full max-w-[80%] space-y-1.5">
           <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground px-1">

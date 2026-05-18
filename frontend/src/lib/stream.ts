@@ -51,6 +51,7 @@ export async function streamChat(
         const event = JSON.parse(trimmed) as StreamEvent;
         if (event.type === "sources") callbacks.onSources(event.data);
         else if (event.type === "token") callbacks.onToken(event.data);
+        else if (event.type === "usage") callbacks.onUsage(event.data.tokens, event.data.cached);
         else if (event.type === "done") callbacks.onDone();
         else if (event.type === "error") callbacks.onError(event.data);
       } catch {
