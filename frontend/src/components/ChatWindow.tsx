@@ -10,56 +10,72 @@ export default function ChatWindow() {
   const [input, setInput] = useState("");
   const [isPending, setIsPending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isPending]);
+
+  // Cancel any in-flight stream on unmount
+  useEffect(() => {
+    return () => abortRef.current?.abort();
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const question = input.trim();
     if (!question || isPending) return;
 
-    setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: question }]);
-    setIsPending(true);
+    // Cancel previous stream if still running
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
 
-    // Add an empty assistant message that we'll fill in as tokens arrive
-    setMessages((prev) => [...prev, { role: "assistant", content: "", sources: [] }]);
+    setInput("");
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: question },
+      { role: "assistant", content: "", sources: [] },
+    ]);
+    setIsPending(true);
 
     let sources: Chunk[] = [];
 
-    await streamChat(question, {
-      onSources: (s) => {
-        sources = s;
-        setMessages((prev) => {
-          const next = [...prev];
-          const last = next[next.length - 1];
-          if (last?.role === "assistant") next[next.length - 1] = { ...last, sources };
-          return next;
-        });
+    await streamChat(
+      question,
+      {
+        onSources: (s) => {
+          sources = s;
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.role === "assistant") next[next.length - 1] = { ...last, sources };
+            return next;
+          });
+        },
+        onToken: (token) => {
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.role === "assistant")
+              next[next.length - 1] = { ...last, content: last.content + token };
+            return next;
+          });
+        },
+        onDone: () => setIsPending(false),
+        onError: (message) => {
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.role === "assistant")
+              next[next.length - 1] = { ...last, content: "", error: message };
+            return next;
+          });
+          setIsPending(false);
+        },
       },
-      onToken: (token) => {
-        setMessages((prev) => {
-          const next = [...prev];
-          const last = next[next.length - 1];
-          if (last?.role === "assistant")
-            next[next.length - 1] = { ...last, content: last.content + token };
-          return next;
-        });
-      },
-      onDone: () => setIsPending(false),
-      onError: (message) => {
-        setMessages((prev) => {
-          const next = [...prev];
-          const last = next[next.length - 1];
-          if (last?.role === "assistant")
-            next[next.length - 1] = { ...last, content: `Error: ${message}` };
-          return next;
-        });
-        setIsPending(false);
-      },
-    });
+      controller.signal,
+    );
 
     setIsPending(false);
   }
@@ -87,7 +103,7 @@ export default function ChatWindow() {
           <MessageBubble key={i} message={msg} />
         ))}
 
-        {isPending && messages[messages.length - 1]?.content === "" && (
+        {isPending && messages[messages.length - 1]?.content === "" && !messages[messages.length - 1]?.error && (
           <div className="flex items-start">
             <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-2.5">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
@@ -98,10 +114,7 @@ export default function ChatWindow() {
         <div ref={bottomRef} />
       </div>
 
-      <form
-        onSubmit={handleSubmit}
-        className="border-t border-border p-4 flex gap-2"
-      >
+      <form onSubmit={handleSubmit} className="border-t border-border p-4 flex gap-2">
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
