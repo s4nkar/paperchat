@@ -8,6 +8,6 @@ router = APIRouter()
 @router.get("/eval")
 async def eval_retrieval():
     try:
-        return await run_eval(k=5)
+        return await run_eval()
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

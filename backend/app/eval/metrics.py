@@ -56,6 +56,7 @@ async def run_eval(retrieval_k: int = 5, rerank_k: int = 3) -> dict:
         results.append({
             "id": q["id"],
             "question": q["question"],
+            "expected_answer": q.get("expected_answer", ""),
             "recall": _recall(retrieved, expected, retrieval_k),
             "reciprocal_rank": rr,
             "precision": _precision(reranked, expected, rerank_k),
