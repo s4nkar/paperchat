@@ -1,3 +1,11 @@
+export interface DocumentMeta {
+  filename: string;
+  size: number;
+  pages: number;
+  chunk_count: number;
+  warning: string | null;
+}
+
 export interface Document {
   id: string;
   filename: string;
