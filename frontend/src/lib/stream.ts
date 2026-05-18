@@ -1,11 +1,4 @@
-import type { Chunk, StreamEvent } from "@/types";
-
-export interface StreamCallbacks {
-  onSources: (sources: Chunk[]) => void;
-  onToken: (token: string) => void;
-  onDone: () => void;
-  onError: (message: string) => void;
-}
+import type { StreamCallbacks, StreamEvent } from "@/types";
 
 export async function streamChat(
   question: string,
