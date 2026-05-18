@@ -31,3 +31,10 @@ export type StreamEvent =
   | { type: "token"; data: string }
   | { type: "done" }
   | { type: "error"; data: string };
+
+export interface StreamCallbacks {
+  onSources: (sources: Chunk[]) => void;
+  onToken: (token: string) => void;
+  onDone: () => void;
+  onError: (message: string) => void;
+}
