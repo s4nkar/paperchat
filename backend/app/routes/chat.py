@@ -2,11 +2,9 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
-from app.config import settings
 from app.rag.llm import generate
+from app.rag.reranker import rerank
 from app.rag.retriever import retrieve
-
-_MIN_SCORE = 0.15
 
 router = APIRouter()
 
@@ -37,12 +35,17 @@ class ChatResponse(BaseModel):
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
+    # Retrieve chunks using Hybrid search (Dense + BM25) + RRF Fusion
     try:
         chunks = await retrieve(req.question)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Retrieval failed: {exc}") from exc
 
-    chunks = [c for c in chunks if c["score"] >= _MIN_SCORE][: settings.top_k_rerank]
+    # Rerank the retrieved chunks using Cohere Reranker API
+    try:
+        chunks = await rerank(req.question, chunks)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Reranker error: {exc}") from exc
 
     if not chunks:
         return ChatResponse(
