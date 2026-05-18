@@ -117,6 +117,21 @@ def test_upload_validates_all_before_writing(
     assert not (tmp_path / "good.pdf").exists()
 
 
+def test_upload_rejects_oversized_pdf(client: TestClient, tmp_path: Path, monkeypatch):
+    import app.routes.upload as upload_module
+
+    monkeypatch.setattr(upload_module, "UPLOAD_DIR", tmp_path)
+    monkeypatch.setattr(upload_module, "_MAX_FILE_BYTES", 10)  # 10 bytes for test
+
+    oversized = b"%PDF" + b"x" * 100
+    response = client.post(
+        "/api/upload",
+        files=[("files", ("big.pdf", oversized, "application/pdf"))],
+    )
+    assert response.status_code == 422
+    assert "limit" in response.json()["detail"].lower()
+
+
 def test_upload_multiple_pdfs(
     client: TestClient, sample_pdf: Path, tmp_path: Path, monkeypatch
 ):

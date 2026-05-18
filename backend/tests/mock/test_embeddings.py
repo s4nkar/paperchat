@@ -1,3 +1,10 @@
+"""
+Mocked tests for the Jina v3 embedding client.
+
+In a real system these would be integration tests hitting a live or containerised
+Jina endpoint. Here we mock httpx.AsyncClient to avoid network calls and API costs
+while still verifying batching logic, retry behaviour, and task parameter handling.
+"""
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
