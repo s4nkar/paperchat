@@ -49,7 +49,7 @@ export default function MessageBubble({ message }: Props) {
         <p className="text-[10px] text-muted-foreground px-1">
           {message.cached
             ? "cached · 0 tokens"
-            : `${message.tokens} tokens`}
+            : `${message.tokens} tokens total`}
         </p>
       )}
 
