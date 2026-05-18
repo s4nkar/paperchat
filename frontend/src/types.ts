@@ -13,7 +13,6 @@ export interface DocumentInfo {
 }
 
 export interface Chunk {
-  id: string;
   text: string;
   filename: string;
   page: number;

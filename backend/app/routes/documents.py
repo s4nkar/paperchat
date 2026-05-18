@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
-from app.rag import chroma_store
+from app.rag import bm25_store, chroma_store
 
 router = APIRouter()
 
@@ -23,3 +23,4 @@ async def delete_document(filename: str) -> None:
     if filename not in existing:
         raise HTTPException(status_code=404, detail=f"{filename!r} not found")
     chroma_store.delete_document(filename)
+    bm25_store.remove_document(filename)
