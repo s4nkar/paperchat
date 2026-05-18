@@ -26,7 +26,7 @@ def _build_context(chunks: list[dict]) -> str:
 
 def _payload(question: str, chunks: list[dict], stream: bool) -> dict:
     context = _build_context(chunks)
-    return {
+    payload: dict = {
         "model": settings.groq_model,
         "messages": [
             {"role": "system", "content": _SYSTEM_PROMPT},
@@ -35,6 +35,9 @@ def _payload(question: str, chunks: list[dict], stream: bool) -> dict:
         "temperature": 0.2,
         "stream": stream,
     }
+    if stream:
+        payload["stream_options"] = {"include_usage": True}
+    return payload
 
 
 def _headers() -> dict:
@@ -52,22 +55,31 @@ async def generate(question: str, chunks: list[dict]) -> str:
     return response.json()["choices"][0]["message"]["content"]
 
 
-async def stream_tokens(question: str, chunks: list[dict]) -> AsyncIterator[str]:
-    """Yield answer tokens from Groq's SSE stream."""
+async def stream_tokens(question: str, chunks: list[dict]) -> AsyncIterator[str | int]:
+    """Yield answer tokens (str) then completion_tokens count (int) as the final item."""
     async with httpx.AsyncClient(timeout=60.0) as client:
         async with client.stream(
             "POST", _GROQ_URL, json=_payload(question, chunks, True), headers=_headers()
         ) as response:
             response.raise_for_status()
+            completion_tokens = 0
             async for line in response.aiter_lines():
                 if not line.startswith("data: "):
                     continue
-                payload = line[6:]
-                if payload == "[DONE]":
+                raw = line[6:]
+                if raw == "[DONE]":
                     break
                 try:
-                    delta = json.loads(payload)["choices"][0]["delta"].get("content")
-                except (KeyError, json.JSONDecodeError):
+                    data = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+                if "usage" in data:
+                    completion_tokens = data["usage"].get("completion_tokens", 0)
+                    continue
+                try:
+                    delta = data["choices"][0]["delta"].get("content")
+                except (KeyError, IndexError):
                     continue
                 if delta:
                     yield delta
+            yield completion_tokens

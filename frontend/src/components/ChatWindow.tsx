@@ -56,6 +56,14 @@ export default function ChatWindow() {
             return next;
           });
         },
+        onUsage: (tokens, cached) => {
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.role === "assistant") next[next.length - 1] = { ...last, tokens, cached };
+            return next;
+          });
+        },
         onDone: () => {
           setMessages((prev) => {
             const next = [...prev];
