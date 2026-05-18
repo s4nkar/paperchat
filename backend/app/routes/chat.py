@@ -2,8 +2,11 @@ import httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, field_validator
 
+from app.config import settings
 from app.rag.llm import generate
 from app.rag.retriever import retrieve
+
+_MIN_SCORE = 0.15
 
 router = APIRouter()
 
@@ -38,6 +41,8 @@ async def chat(req: ChatRequest) -> ChatResponse:
         chunks = await retrieve(req.question)
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"Retrieval failed: {exc}") from exc
+
+    chunks = [c for c in chunks if c["score"] >= _MIN_SCORE][: settings.top_k_rerank]
 
     if not chunks:
         return ChatResponse(
