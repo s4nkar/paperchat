@@ -21,10 +21,10 @@ class Settings(BaseSettings):
     chunk_size: int = 512
     chunk_overlap: int = 64
 
-    # Retrieval cascade: dense (10) + BM25 (10) → RRF → rerank top 5
+    # Retrieval cascade: dense (10) + BM25 (10) → RRF → rerank top 3
     top_k_dense: int = 10
     top_k_bm25: int = 10
-    top_k_rerank: int = 5
+    top_k_rerank: int = 3
 
 
 settings = Settings()
