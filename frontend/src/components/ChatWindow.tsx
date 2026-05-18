@@ -1,43 +1,67 @@
 import { useEffect, useRef, useState } from "react";
 import { Send, Loader2, MessageSquareText } from "lucide-react";
-import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import MessageBubble from "@/components/MessageBubble";
-import { sendChat } from "@/lib/api";
-import type { ChatMessage } from "@/types";
+import { streamChat } from "@/lib/stream";
+import type { ChatMessage, Chunk } from "@/types";
 
 export default function ChatWindow() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
+  const [isPending, setIsPending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
-
-  const { mutate, isPending } = useMutation({
-    mutationFn: (question: string) => sendChat(question),
-    onSuccess: (data) => {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: data.answer, sources: data.sources },
-      ]);
-    },
-    onError: (err) => {
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: `Error: ${(err as Error).message}` },
-      ]);
-    },
-  });
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, isPending]);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const question = input.trim();
     if (!question || isPending) return;
+
     setInput("");
     setMessages((prev) => [...prev, { role: "user", content: question }]);
-    mutate(question);
+    setIsPending(true);
+
+    // Add an empty assistant message that we'll fill in as tokens arrive
+    setMessages((prev) => [...prev, { role: "assistant", content: "", sources: [] }]);
+
+    let sources: Chunk[] = [];
+
+    await streamChat(question, {
+      onSources: (s) => {
+        sources = s;
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role === "assistant") next[next.length - 1] = { ...last, sources };
+          return next;
+        });
+      },
+      onToken: (token) => {
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role === "assistant")
+            next[next.length - 1] = { ...last, content: last.content + token };
+          return next;
+        });
+      },
+      onDone: () => setIsPending(false),
+      onError: (message) => {
+        setMessages((prev) => {
+          const next = [...prev];
+          const last = next[next.length - 1];
+          if (last?.role === "assistant")
+            next[next.length - 1] = { ...last, content: `Error: ${message}` };
+          return next;
+        });
+        setIsPending(false);
+      },
+    });
+
+    setIsPending(false);
   }
 
   return (
@@ -63,7 +87,7 @@ export default function ChatWindow() {
           <MessageBubble key={i} message={msg} />
         ))}
 
-        {isPending && (
+        {isPending && messages[messages.length - 1]?.content === "" && (
           <div className="flex items-start">
             <div className="bg-card border border-border rounded-2xl rounded-bl-sm px-4 py-2.5">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />

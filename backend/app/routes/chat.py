@@ -1,8 +1,12 @@
+import json
+from typing import AsyncIterator
+
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 
-from app.rag.llm import generate
+from app.rag.llm import stream_tokens
 from app.rag.reranker import rerank
 from app.rag.retriever import retrieve
 
@@ -20,55 +24,53 @@ class ChatRequest(BaseModel):
         return v.strip()
 
 
-class SourceChunk(BaseModel):
-    text: str
-    filename: str
-    page: int
-    section: str
-    score: float
+def _event(obj: dict) -> str:
+    return json.dumps(obj, ensure_ascii=False) + "\n"
 
 
-class ChatResponse(BaseModel):
-    answer: str
-    sources: list[SourceChunk]
-
-
-@router.post("/chat", response_model=ChatResponse)
-async def chat(req: ChatRequest) -> ChatResponse:
-    # Retrieve chunks using Hybrid search (Dense + BM25) + RRF Fusion
+async def _stream(question: str) -> AsyncIterator[str]:
     try:
-        chunks = await retrieve(req.question)
+        chunks = await retrieve(question)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Retrieval failed: {exc}") from exc
+        yield _event({"type": "error", "data": f"Retrieval failed: {exc}"})
+        return
 
-    # Rerank the retrieved chunks using Cohere Reranker API
     try:
-        chunks = await rerank(req.question, chunks)
+        chunks = await rerank(question, chunks)
     except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"Reranker error: {exc}") from exc
+        yield _event({"type": "error", "data": f"Reranker error: {exc}"})
+        return
 
     if not chunks:
-        return ChatResponse(
-            answer="No relevant content found. Please upload documents before asking questions.",
-            sources=[],
-        )
-
-    try:
-        answer = await generate(req.question, chunks)
-    except httpx.HTTPStatusError as exc:
-        raise HTTPException(status_code=502, detail=f"LLM error: {exc.response.text}") from exc
-    except Exception as exc:
-        raise HTTPException(status_code=502, detail=f"LLM error: {exc}") from exc
+        yield _event({"type": "token", "data": "No relevant content found. Please upload documents before asking questions."})
+        yield _event({"type": "done"})
+        return
 
     sources = [
-        SourceChunk(
-            text=c["text"],
-            filename=c["metadata"]["filename"],
-            page=c["metadata"]["page"],
-            section=c["metadata"].get("section", ""),
-            score=c["score"],
-        )
+        {
+            "text": c["text"],
+            "filename": c["metadata"]["filename"],
+            "page": c["metadata"]["page"],
+            "section": c["metadata"].get("section", ""),
+            "score": c["score"],
+        }
         for c in chunks
     ]
+    yield _event({"type": "sources", "data": sources})
 
-    return ChatResponse(answer=answer, sources=sources)
+    try:
+        async for token in stream_tokens(question, chunks):
+            yield _event({"type": "token", "data": token})
+    except httpx.HTTPStatusError as exc:
+        yield _event({"type": "error", "data": f"LLM error: {exc.response.text}"})
+        return
+    except Exception as exc:
+        yield _event({"type": "error", "data": f"LLM error: {exc}"})
+        return
+
+    yield _event({"type": "done"})
+
+
+@router.post("/chat")
+async def chat(req: ChatRequest) -> StreamingResponse:
+    return StreamingResponse(_stream(req.question), media_type="application/x-ndjson")
