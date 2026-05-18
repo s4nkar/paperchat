@@ -1,22 +1,4 @@
-import type { Chunk, DocumentInfo, DocumentMeta } from "@/types";
-
-export interface ChatResponse {
-  answer: string;
-  sources: Chunk[];
-}
-
-export async function sendChat(question: string): Promise<ChatResponse> {
-  const res = await fetch("/api/chat", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ question }),
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}));
-    throw new Error(err.detail ?? `Chat failed (${res.status})`);
-  }
-  return res.json();
-}
+import type { DocumentInfo, DocumentMeta } from "@/types";
 
 export async function fetchDocuments(): Promise<DocumentInfo[]> {
   const res = await fetch("/api/documents");
