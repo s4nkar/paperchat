@@ -14,7 +14,10 @@ def _get_collection(client: chromadb.ClientAPI) -> chromadb.Collection:
 
 
 def _client() -> chromadb.PersistentClient:
-    return chromadb.PersistentClient(path=settings.chroma_persist_dir)
+    return chromadb.PersistentClient(
+        path=settings.chroma_persist_dir,
+        settings=chromadb.config.Settings(anonymized_telemetry=False),
+    )
 
 
 def add_chunks(chunks: list[Chunk], vectors: list[list[float]], content_hash: str = "") -> None:
@@ -38,9 +41,12 @@ def add_chunks(chunks: list[Chunk], vectors: list[list[float]], content_hash: st
 
 def find_by_hash(content_hash: str) -> int:
     """Return the number of chunks already stored for this content hash, or 0 if none."""
-    col = _get_collection(_client())
-    result = col.get(where={"content_hash": content_hash}, include=[])
-    return len(result["ids"])
+    try:
+        col = _get_collection(_client())
+        result = col.get(where={"content_hash": content_hash}, include=[])
+        return len(result["ids"])
+    except Exception:
+        return 0
 
 
 def query_chunks(vector: list[float], top_k: int) -> list[dict]:
@@ -69,8 +75,15 @@ def delete_document(filename: str) -> None:
     col.delete(where={"filename": filename})
 
 
-def list_documents() -> list[str]:
+def list_documents() -> list[dict]:
+    """Return one entry per document with filename, page_count, and chunk_count."""
     col = _get_collection(_client())
     result = col.get(include=["metadatas"])
-    filenames = {m["filename"] for m in result["metadatas"]}
-    return sorted(filenames)
+    docs: dict[str, dict] = {}
+    for m in result["metadatas"]:
+        name = m["filename"]
+        if name not in docs:
+            docs[name] = {"filename": name, "page_count": 0, "chunk_count": 0}
+        docs[name]["chunk_count"] += 1
+        docs[name]["page_count"] = max(docs[name]["page_count"], m.get("page", 0))
+    return sorted(docs.values(), key=lambda d: d["filename"])

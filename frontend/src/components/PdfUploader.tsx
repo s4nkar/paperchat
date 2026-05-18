@@ -13,11 +13,11 @@ export default function PdfUploader() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
   });
 
-  function handleFiles(files: FileList | null) {
-    if (!files || files.length === 0) return;
-    // Reset input so the same file can be re-selected
+  function handleFiles(list: FileList | null) {
+    if (!list || list.length === 0) return;
+    const fileArray = Array.from(list);
     if (inputRef.current) inputRef.current.value = "";
-    mutate(Array.from(files));
+    mutate(fileArray);
   }
 
   const warnings = data?.filter((d) => d.warning) ?? [];
