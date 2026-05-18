@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     top_k_dense: int = 10
     top_k_bm25: int = 10
     top_k_rerank: int = 3
+    min_rerank_score: float = 0.2  # Cohere relevance scores below this are off-topic
 
 
 settings = Settings()

@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 
+from app.config import settings
 from app.rag.llm import stream_tokens
 from app.rag.reranker import rerank
 from app.rag.retriever import retrieve
@@ -40,6 +41,8 @@ async def _stream(question: str) -> AsyncIterator[str]:
     except Exception as exc:
         yield _event({"type": "error", "data": f"Reranker error: {exc}"})
         return
+
+    chunks = [c for c in chunks if c["score"] >= settings.min_rerank_score]
 
     if not chunks:
         yield _event({"type": "token", "data": "No relevant content found. Please upload documents before asking questions."})

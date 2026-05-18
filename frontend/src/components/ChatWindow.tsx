@@ -46,12 +46,6 @@ export default function ChatWindow() {
       {
         onSources: (s) => {
           sources = s;
-          setMessages((prev) => {
-            const next = [...prev];
-            const last = next[next.length - 1];
-            if (last?.role === "assistant") next[next.length - 1] = { ...last, sources };
-            return next;
-          });
         },
         onToken: (token) => {
           setMessages((prev) => {
@@ -62,7 +56,15 @@ export default function ChatWindow() {
             return next;
           });
         },
-        onDone: () => setIsPending(false),
+        onDone: () => {
+          setMessages((prev) => {
+            const next = [...prev];
+            const last = next[next.length - 1];
+            if (last?.role === "assistant") next[next.length - 1] = { ...last, sources };
+            return next;
+          });
+          setIsPending(false);
+        },
         onError: (message) => {
           setMessages((prev) => {
             const next = [...prev];
