@@ -1,7 +1,11 @@
+import logging
+
 import chromadb
 
 from app.config import settings
 from app.rag.chunker import Chunk
+
+logger = logging.getLogger(__name__)
 
 _COLLECTION_NAME = "chunks"
 
@@ -45,15 +49,22 @@ def find_by_hash(content_hash: str) -> int:
         col = _get_collection(_client())
         result = col.get(where={"content_hash": content_hash}, include=[])
         return len(result["ids"])
+    except ValueError:
+        # Chroma raises ValueError when the where-clause key is absent from all metadata
+        return 0
     except Exception:
+        logger.warning("find_by_hash failed for hash %s; will re-ingest", content_hash, exc_info=True)
         return 0
 
 
 def query_chunks(vector: list[float], top_k: int) -> list[dict]:
     col = _get_collection(_client())
+    count = col.count()
+    if count == 0:
+        return []
     results = col.query(
         query_embeddings=[vector],
-        n_results=min(top_k, col.count()),
+        n_results=min(top_k, count),
         include=["documents", "metadatas", "distances"],
     )
     return [

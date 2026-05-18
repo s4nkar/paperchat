@@ -69,6 +69,11 @@ def test_list_documents():
     assert all("page_count" in d and "chunk_count" in d for d in docs)
 
 
+def test_query_empty_collection_returns_empty():
+    results = query_chunks([1.0] + [0.0] * (_DIM - 1), top_k=5)
+    assert results == []
+
+
 def test_score_is_similarity_not_distance():
     add_chunks(_chunks(1), _vectors(1))
     results = query_chunks([1.0] + [0.0] * (_DIM - 1), top_k=1)

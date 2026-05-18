@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 import pymupdf
@@ -8,9 +9,10 @@ from app.config import settings
 from app.rag.ingest import ingest_pdf
 
 router = APIRouter()
-
+logger = logging.getLogger(__name__)
 
 _MIN_CHARS_PER_PAGE = 50  # below this average → likely image-only
+_PDF_MAGIC = b"%PDF"
 
 
 class DocumentMeta(BaseModel):
@@ -25,23 +27,40 @@ class DocumentMeta(BaseModel):
 UPLOAD_DIR = Path(settings.upload_dir)
 
 
+def _safe_filename(raw: str) -> str:
+    """Strip any directory components to prevent path traversal."""
+    return Path(raw).name or "upload.pdf"
+
+
+async def _read_and_validate(file: UploadFile) -> tuple[str, bytes]:
+    """Return (safe_filename, contents) or raise HTTPException."""
+    raw_name = file.filename or ""
+    if not raw_name.lower().endswith(".pdf"):
+        raise HTTPException(status_code=422, detail=f"{raw_name!r} is not a PDF")
+
+    contents = await file.read()
+
+    if not contents.startswith(_PDF_MAGIC):
+        raise HTTPException(status_code=422, detail=f"{raw_name!r} is not a valid PDF file")
+
+    return _safe_filename(raw_name), contents
+
+
 @router.post("/upload", response_model=list[DocumentMeta])
 async def upload(files: list[UploadFile] = File(...)) -> list[DocumentMeta]:
     if not files:
         raise HTTPException(status_code=422, detail="No files provided")
 
+    # Validate and read all files before writing anything to disk
+    validated: list[tuple[str, bytes]] = []
+    for file in files:
+        validated.append(await _read_and_validate(file))
+
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     results: list[DocumentMeta] = []
 
-    for file in files:
-        if not (file.filename or "").lower().endswith(".pdf"):
-            raise HTTPException(
-                status_code=422, detail=f"{file.filename!r} is not a PDF"
-            )
-
-        # Read once so we can write and parse from the same bytes without re-reading disk
-        contents = await file.read()
-        dest = UPLOAD_DIR / (file.filename or "upload.pdf")
+    for safe_name, contents in validated:
+        dest = UPLOAD_DIR / safe_name
         dest.write_bytes(contents)
 
         doc = pymupdf.open(stream=contents, filetype="pdf")
@@ -60,7 +79,7 @@ async def upload(files: list[UploadFile] = File(...)) -> list[DocumentMeta]:
 
         results.append(
             DocumentMeta(
-                filename=file.filename or "",
+                filename=safe_name,
                 size=len(contents),
                 pages=pages,
                 chunk_count=chunk_count,

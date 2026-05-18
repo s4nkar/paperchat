@@ -65,6 +65,58 @@ def test_upload_warns_image_only_pdf(client: TestClient, tmp_path: Path, monkeyp
     assert "scanned" in data[0]["warning"].lower()
 
 
+def test_upload_rejects_path_traversal_filename(
+    client: TestClient, sample_pdf: Path, tmp_path: Path, monkeypatch
+):
+    import app.routes.upload as upload_module
+
+    monkeypatch.setattr(upload_module, "UPLOAD_DIR", tmp_path)
+
+    with _mock_ingest(), open(sample_pdf, "rb") as f:
+        response = client.post(
+            "/api/upload",
+            files=[("files", ("../../evil.pdf", f, "application/pdf"))],
+        )
+
+    assert response.status_code == 200
+    # File must be written inside UPLOAD_DIR, not two levels up
+    assert (tmp_path / "evil.pdf").exists()
+    assert not (tmp_path.parent.parent / "evil.pdf").exists()
+
+
+def test_upload_rejects_fake_pdf(client: TestClient, tmp_path: Path, monkeypatch):
+    import app.routes.upload as upload_module
+
+    monkeypatch.setattr(upload_module, "UPLOAD_DIR", tmp_path)
+
+    response = client.post(
+        "/api/upload",
+        files=[("files", ("malware.pdf", b"MZ\x90\x00not a pdf", "application/pdf"))],
+    )
+    assert response.status_code == 422
+
+
+def test_upload_validates_all_before_writing(
+    client: TestClient, sample_pdf: Path, tmp_path: Path, monkeypatch
+):
+    import app.routes.upload as upload_module
+
+    monkeypatch.setattr(upload_module, "UPLOAD_DIR", tmp_path)
+
+    with open(sample_pdf, "rb") as f:
+        response = client.post(
+            "/api/upload",
+            files=[
+                ("files", ("good.pdf", f, "application/pdf")),
+                ("files", ("bad.txt", b"hello", "text/plain")),
+            ],
+        )
+
+    assert response.status_code == 422
+    # good.pdf must NOT have been written since validation failed
+    assert not (tmp_path / "good.pdf").exists()
+
+
 def test_upload_multiple_pdfs(
     client: TestClient, sample_pdf: Path, tmp_path: Path, monkeypatch
 ):
