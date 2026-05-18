@@ -1,3 +1,9 @@
+"""
+Mocked tests for the Cohere reranker client.
+
+In a real system these would hit a live Cohere endpoint. Here we mock httpx to
+verify score remapping and top_k truncation without incurring API calls.
+"""
 from unittest.mock import AsyncMock, patch
 
 import pytest

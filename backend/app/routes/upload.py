@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 _MIN_CHARS_PER_PAGE = 50  # below this average → likely image-only
 _PDF_MAGIC = b"%PDF"
+_MAX_FILE_BYTES = 15 * 1024 * 1024  # 15 MB
 
 
 class DocumentMeta(BaseModel):
@@ -39,6 +40,10 @@ async def _read_and_validate(file: UploadFile) -> tuple[str, bytes]:
         raise HTTPException(status_code=422, detail=f"{raw_name!r} is not a PDF")
 
     contents = await file.read()
+
+    if len(contents) > _MAX_FILE_BYTES:
+        mb = len(contents) / 1024 / 1024
+        raise HTTPException(status_code=422, detail=f"{raw_name!r} is {mb:.1f} MB — limit is 15 MB")
 
     if not contents.startswith(_PDF_MAGIC):
         raise HTTPException(status_code=422, detail=f"{raw_name!r} is not a valid PDF file")

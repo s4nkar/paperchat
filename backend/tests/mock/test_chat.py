@@ -1,3 +1,10 @@
+"""
+Mocked tests for the chat streaming endpoint.
+
+In a real system these would run against a live LLM and retrieval stack. Here we
+mock retrieve, rerank, and stream_tokens to verify NDJSON event ordering and
+input validation without API calls.
+"""
 import json
 from unittest.mock import AsyncMock, patch
 
