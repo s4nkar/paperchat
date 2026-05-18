@@ -1,37 +1,42 @@
 [
   {
     "id": "q1",
-    "question": "What is the cost of the e-learning training for new candidates?",
+    "question": "How many positive and negative words does Bing Liu's Sentiment Lexicon contain?",
+    "expected_answer": "Bing Liu's Sentiment Lexicon contains 4783 positive and negative words.",
     "expected_sources": [
-      {"filename": "CAREONDEMAND UNIFORM - E-LEARNING TRAINING - PAYMENT POLICY (SUMMARY).pdf", "page": 2}
+      {"filename": "A survey on sentiment analysis.pdf", "page": 16}
     ]
   },
   {
     "id": "q2",
-    "question": "What should employees do if they do not know how to use a computer for e-learning?",
+    "question": "According to Hu et al. (2012), what percentage of products in their amazon.com book review dataset were subjected to online review manipulations?",
+    "expected_answer": "Close to 10.3 percent of products were subjected to online review manipulations.",
     "expected_sources": [
-      {"filename": "CAREONDEMAND UNIFORM - E-LEARNING TRAINING - PAYMENT POLICY (SUMMARY).pdf", "page": 2}
+      {"filename": "A survey on sentiment analysis.pdf", "page": 15}
     ]
   },
   {
     "id": "q3",
-    "question": "What are the rules about jewellery at work?",
+    "question": "What accuracy did the Naive Bayes model achieve in Tripathy et al. (2015) using K-fold cross-validation on movie review data?",
+    "expected_answer": "The Naive Bayes model achieved an accuracy of 89.05 percent in K-fold cross-validation on movie review data.",
     "expected_sources": [
-      {"filename": "CAREONDEMAND UNIFORM - E-LEARNING TRAINING - PAYMENT POLICY (SUMMARY).pdf", "page": 2}
+      {"filename": "A survey on sentiment analysis.pdf", "page": 20}
     ]
   },
   {
     "id": "q4",
-    "question": "What documents can be used as proof of identity?",
+    "question": "What F1 score and mean AUC did the linear SVM model achieve in Borg and Boldt (2020)?",
+    "expected_answer": "The linear SVM model achieved an F1 score of 83.4 percent and a mean AUC of 0.896 on Swedish telecom customer review data of 168,010 emails.",
     "expected_sources": [
-      {"filename": "Standard proof of Address_and_identity_documents(2).pdf", "page": 1}
+      {"filename": "A survey on sentiment analysis.pdf", "page": 21}
     ]
   },
   {
     "id": "q5",
-    "question": "What utility bills are accepted as proof of address and how old can they be?",
+    "question": "How many encoders and parameters does BERT large have compared to BERT base?",
+    "expected_answer": "BERT base has 12 encoders and 110 million parameters. BERT large has 24 encoders and 330 million parameters.",
     "expected_sources": [
-      {"filename": "Standard proof of Address_and_identity_documents(2).pdf", "page": 1}
+      {"filename": "A survey on sentiment analysis.pdf", "page": 30}
     ]
   }
 ]
