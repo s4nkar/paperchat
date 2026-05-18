@@ -17,7 +17,7 @@ def _client() -> chromadb.PersistentClient:
     return chromadb.PersistentClient(path=settings.chroma_persist_dir)
 
 
-def add_chunks(chunks: list[Chunk], vectors: list[list[float]]) -> None:
+def add_chunks(chunks: list[Chunk], vectors: list[list[float]], content_hash: str = "") -> None:
     col = _get_collection(_client())
     col.upsert(
         ids=[f"{c.filename}__{c.chunk_index}" for c in chunks],
@@ -29,10 +29,18 @@ def add_chunks(chunks: list[Chunk], vectors: list[list[float]]) -> None:
                 "page": c.page,
                 "section": c.section,
                 "chunk_index": c.chunk_index,
+                "content_hash": content_hash,
             }
             for c in chunks
         ],
     )
+
+
+def find_by_hash(content_hash: str) -> int:
+    """Return the number of chunks already stored for this content hash, or 0 if none."""
+    col = _get_collection(_client())
+    result = col.get(where={"content_hash": content_hash}, include=[])
+    return len(result["ids"])
 
 
 def query_chunks(vector: list[float], top_k: int) -> list[dict]:
