@@ -62,7 +62,7 @@ async def stream_tokens(question: str, chunks: list[dict]) -> AsyncIterator[str 
             "POST", _GROQ_URL, json=_payload(question, chunks, True), headers=_headers()
         ) as response:
             response.raise_for_status()
-            completion_tokens = 0
+            total_tokens = 0
             async for line in response.aiter_lines():
                 if not line.startswith("data: "):
                     continue
@@ -74,7 +74,7 @@ async def stream_tokens(question: str, chunks: list[dict]) -> AsyncIterator[str 
                 except json.JSONDecodeError:
                     continue
                 if "usage" in data:
-                    completion_tokens = data["usage"].get("completion_tokens", 0)
+                    total_tokens = data["usage"].get("total_tokens", 0)
                     continue
                 try:
                     delta = data["choices"][0]["delta"].get("content")
@@ -82,4 +82,4 @@ async def stream_tokens(question: str, chunks: list[dict]) -> AsyncIterator[str 
                     continue
                 if delta:
                     yield delta
-            yield completion_tokens
+            yield total_tokens
