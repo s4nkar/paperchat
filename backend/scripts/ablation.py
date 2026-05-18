@@ -23,7 +23,7 @@ from app.rag.embeddings import embed_texts
 
 _FIXTURES = Path(__file__).parent.parent / "tests" / "fixtures"
 _QUESTIONS_PATH = Path(__file__).parent.parent / "app" / "eval" / "questions.json"
-_DOCS_PATH = Path(__file__).parent.parent.parent / "docs" / "ablation.md"
+_DOCS_PATH = Path(__file__).parent.parent / "docs" / "ablation.md"
 _CHUNK_SIZES = [256, 512, 1024]
 _TOP_K = 5
 _COLLECTION = "ablation"
