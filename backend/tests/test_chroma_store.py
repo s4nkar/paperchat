@@ -58,13 +58,15 @@ def test_delete_document():
 
     delete_document("a.pdf")
     remaining = list_documents()
-    assert remaining == ["b.pdf"]
+    assert [d["filename"] for d in remaining] == ["b.pdf"]
 
 
 def test_list_documents():
     add_chunks(_chunks(2, "x.pdf"), _vectors(2))
     add_chunks(_chunks(2, "y.pdf"), _vectors(2))
-    assert list_documents() == ["x.pdf", "y.pdf"]
+    docs = list_documents()
+    assert [d["filename"] for d in docs] == ["x.pdf", "y.pdf"]
+    assert all("page_count" in d and "chunk_count" in d for d in docs)
 
 
 def test_score_is_similarity_not_distance():

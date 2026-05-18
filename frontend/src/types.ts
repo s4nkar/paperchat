@@ -6,12 +6,10 @@ export interface DocumentMeta {
   warning: string | null;
 }
 
-export interface Document {
-  id: string;
+export interface DocumentInfo {
   filename: string;
-  pages: number;
-  size: number;
-  uploaded_at: string;
+  page_count: number;
+  chunk_count: number;
 }
 
 export interface Chunk {
