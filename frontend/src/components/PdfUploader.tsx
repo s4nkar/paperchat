@@ -1,23 +1,26 @@
 import { useRef } from "react";
-import { Upload, Loader2 } from "lucide-react";
+import { Upload, Loader2, CheckCircle2 } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { uploadPdfs } from "@/lib/api";
-import type { DocumentMeta } from "@/types";
 
 export default function PdfUploader() {
   const inputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
 
-  const { mutate, isPending, isError, error, data } = useMutation({
+  const { mutate, isPending, isError, error, isSuccess, data } = useMutation({
     mutationFn: (files: File[]) => uploadPdfs(files),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["documents"] }),
   });
 
   function handleFiles(files: FileList | null) {
     if (!files || files.length === 0) return;
+    // Reset input so the same file can be re-selected
+    if (inputRef.current) inputRef.current.value = "";
     mutate(Array.from(files));
   }
+
+  const warnings = data?.filter((d) => d.warning) ?? [];
 
   return (
     <div className="space-y-2">
@@ -49,23 +52,24 @@ export default function PdfUploader() {
         )}
       </Button>
 
-      {isError && (
-        <p className="text-xs text-destructive">
-          {(error as Error).message}
+      {isSuccess && (
+        <p className="flex items-center gap-1.5 text-xs text-green-700 dark:text-green-400">
+          <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+          {data.length === 1
+            ? `${data[0].filename} indexed`
+            : `${data.length} files indexed`}
         </p>
       )}
 
-      {data?.map((doc: DocumentMeta) => (
-        <div key={doc.filename} className="text-xs space-y-0.5">
-          <p className="font-medium truncate text-foreground">{doc.filename}</p>
-          <p className="text-muted-foreground">
-            {doc.pages} {doc.pages === 1 ? "page" : "pages"} · {doc.chunk_count} chunks indexed
-          </p>
-          {doc.warning && (
-            <p className="text-amber-600 dark:text-amber-400">{doc.warning}</p>
-          )}
-        </div>
+      {warnings.map((doc) => (
+        <p key={doc.filename} className="text-xs text-amber-600 dark:text-amber-400">
+          {doc.filename}: {doc.warning}
+        </p>
       ))}
+
+      {isError && (
+        <p className="text-xs text-destructive">{(error as Error).message}</p>
+      )}
     </div>
   );
 }
