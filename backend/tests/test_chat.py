@@ -22,7 +22,8 @@ def mocked_pipeline():
         yield
 
 
-def test_chat_returns_answer_and_sources(client: TestClient, mocked_pipeline):
+@pytest.mark.usefixtures("mocked_pipeline")
+def test_chat_returns_answer_and_sources(client: TestClient):
     response = client.post("/api/chat", json={"question": "What is the payment policy?"})
     assert response.status_code == 200
     data = response.json()
@@ -33,11 +34,12 @@ def test_chat_returns_answer_and_sources(client: TestClient, mocked_pipeline):
     assert data["sources"][0]["score"] == pytest.approx(0.92)
 
 
-def test_chat_empty_question(client: TestClient, mocked_pipeline):
+def test_chat_empty_question(client: TestClient):
     response = client.post("/api/chat", json={"question": ""})
-    assert response.status_code == 200
+    assert response.status_code == 422
 
 
 def test_chat_missing_question(client: TestClient):
     response = client.post("/api/chat", json={})
     assert response.status_code == 422
+

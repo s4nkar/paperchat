@@ -1,5 +1,6 @@
-from fastapi import APIRouter
-from pydantic import BaseModel
+import httpx
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel, field_validator
 
 from app.rag.llm import generate
 from app.rag.retriever import retrieve
@@ -9,6 +10,13 @@ router = APIRouter()
 
 class ChatRequest(BaseModel):
     question: str
+
+    @field_validator("question")
+    @classmethod
+    def question_not_blank(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError("question must not be blank")
+        return v.strip()
 
 
 class SourceChunk(BaseModel):
@@ -26,8 +34,23 @@ class ChatResponse(BaseModel):
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
-    chunks = await retrieve(req.question)
-    answer = await generate(req.question, chunks)
+    try:
+        chunks = await retrieve(req.question)
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"Retrieval failed: {exc}") from exc
+
+    if not chunks:
+        return ChatResponse(
+            answer="No relevant content found. Please upload documents before asking questions.",
+            sources=[],
+        )
+
+    try:
+        answer = await generate(req.question, chunks)
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(status_code=502, detail=f"LLM error: {exc.response.text}") from exc
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"LLM error: {exc}") from exc
 
     sources = [
         SourceChunk(
