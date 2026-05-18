@@ -1,8 +1,13 @@
 from fastapi import APIRouter, HTTPException
 
+from app.eval.metrics import run_eval
+
 router = APIRouter()
 
 
 @router.get("/eval")
-async def run_eval():
-    raise HTTPException(status_code=501, detail="Not implemented")
+async def eval_retrieval():
+    try:
+        return await run_eval(k=5)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc

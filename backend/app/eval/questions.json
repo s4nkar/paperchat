@@ -1,1 +1,37 @@
-[]
+[
+  {
+    "id": "q1",
+    "question": "What is the cost of the e-learning training for new candidates?",
+    "expected_sources": [
+      {"filename": "CAREONDEMAND UNIFORM - E-LEARNING TRAINING - PAYMENT POLICY (SUMMARY).pdf", "page": 2}
+    ]
+  },
+  {
+    "id": "q2",
+    "question": "What should employees do if they do not know how to use a computer for e-learning?",
+    "expected_sources": [
+      {"filename": "CAREONDEMAND UNIFORM - E-LEARNING TRAINING - PAYMENT POLICY (SUMMARY).pdf", "page": 2}
+    ]
+  },
+  {
+    "id": "q3",
+    "question": "What are the rules about jewellery at work?",
+    "expected_sources": [
+      {"filename": "CAREONDEMAND UNIFORM - E-LEARNING TRAINING - PAYMENT POLICY (SUMMARY).pdf", "page": 2}
+    ]
+  },
+  {
+    "id": "q4",
+    "question": "What documents can be used as proof of identity?",
+    "expected_sources": [
+      {"filename": "Standard proof of Address_and_identity_documents(2).pdf", "page": 1}
+    ]
+  },
+  {
+    "id": "q5",
+    "question": "What utility bills are accepted as proof of address and how old can they be?",
+    "expected_sources": [
+      {"filename": "Standard proof of Address_and_identity_documents(2).pdf", "page": 1}
+    ]
+  }
+]
