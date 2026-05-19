@@ -30,6 +30,21 @@ def _event(obj: dict) -> str:
     return json.dumps(obj, ensure_ascii=False) + "\n"
 
 
+def _api_error(service: str, exc: Exception) -> str:
+    if isinstance(exc, httpx.HTTPStatusError):
+        code = exc.response.status_code
+        if code == 429:
+            return f"{service} rate limit reached. Please wait a moment and try again, or upgrade your API plan."
+        if code in (401, 403):
+            return f"{service} API key is invalid or expired. Please check your key configuration."
+        if code >= 500:
+            return f"{service} is temporarily unavailable (HTTP {code}). Please try again shortly."
+        return f"{service} returned an unexpected error (HTTP {code})."
+    if isinstance(exc, httpx.ConnectError):
+        return f"Could not reach {service}. Please check your network connection."
+    return f"{service} error: {exc}"
+
+
 async def _stream(question: str) -> AsyncIterator[str]:
     cached = question_cache.get(question)
     if cached:
@@ -42,13 +57,13 @@ async def _stream(question: str) -> AsyncIterator[str]:
     try:
         chunks = await retrieve(question)
     except Exception as exc:
-        yield _event({"type": "error", "data": f"Retrieval failed: {exc}"})
+        yield _event({"type": "error", "data": _api_error("Jina", exc)})
         return
 
     try:
         chunks = await rerank(question, chunks)
     except Exception as exc:
-        yield _event({"type": "error", "data": f"Reranker error: {exc}"})
+        yield _event({"type": "error", "data": _api_error("Cohere", exc)})
         return
 
     chunks = [c for c in chunks if c["score"] >= settings.min_rerank_score]
@@ -79,11 +94,8 @@ async def _stream(question: str) -> AsyncIterator[str]:
             else:
                 answer_parts.append(item)
                 yield _event({"type": "token", "data": item})
-    except httpx.HTTPStatusError as exc:
-        yield _event({"type": "error", "data": f"LLM error: {exc.response.text}"})
-        return
     except Exception as exc:
-        yield _event({"type": "error", "data": f"LLM error: {exc}"})
+        yield _event({"type": "error", "data": _api_error("Groq", exc)})
         return
 
     yield _event({"type": "usage", "data": {"tokens": token_count, "cached": False}})
