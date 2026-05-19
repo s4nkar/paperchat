@@ -17,6 +17,8 @@ COPY backend/requirements-dev.txt ./
 RUN pip install --no-cache-dir -r requirements-dev.txt
 COPY backend/ ./
 
+# backend-dev has no COPY — it relies on the volume mount in docker-compose.yml.
+# Building this stage standalone produces a broken image; use docker compose up instead.
 FROM backend-base AS backend-dev
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
 
