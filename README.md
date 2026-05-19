@@ -1,14 +1,9 @@
----
-title: PaperChat
-emoji: 📄
-colorFrom: blue
-colorTo: indigo
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 # PaperChat
+
+[![Python 3.11](https://img.shields.io/badge/Python-3.11-blue)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.115-009688)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-18-61dafb)](https://react.dev/)
+[![CI](https://github.com/s4nkar/paperchat/actions/workflows/deploy.yml/badge.svg)](https://github.com/s4nkar/paperchat/actions/workflows/deploy.yml)
 
 Upload PDFs, ask questions, get cited answers. Built with FastAPI, React, and a hybrid retrieval pipeline.
 
