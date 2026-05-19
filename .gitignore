@@ -52,6 +52,9 @@ backend/uploads/
 data/
 !data/**/.gitkeep
 
+# Test fixture PDFs — large binaries, not needed at runtime on HF Spaces
+backend/tests/fixtures/
+
 # Coverage
 coverage/
 .coverage
