@@ -1,6 +1,7 @@
 import logging
 from pathlib import Path
 
+import httpx
 import pymupdf
 from fastapi import APIRouter, File, HTTPException, UploadFile
 from pydantic import BaseModel
@@ -80,7 +81,17 @@ async def upload(files: list[UploadFile] = File(...)) -> list[DocumentMeta]:
                 "OCR is not supported — the document will not be searchable."
             )
 
-        chunk_count = await ingest_pdf(dest)
+        try:
+            chunk_count = await ingest_pdf(dest)
+        except httpx.HTTPStatusError as exc:
+            code = exc.response.status_code
+            if code == 429:
+                raise HTTPException(status_code=503, detail="Jina rate limit reached while embedding. Please wait and try again, or upgrade your API plan.")
+            if code in (401, 403):
+                raise HTTPException(status_code=503, detail="Jina API key is invalid or expired. Please check your key configuration.")
+            raise HTTPException(status_code=503, detail=f"Embedding service error (HTTP {code}). Please try again.")
+        except Exception as exc:
+            raise HTTPException(status_code=503, detail=f"Ingestion failed: {exc}")
 
         results.append(
             DocumentMeta(
