@@ -36,6 +36,12 @@ Only the Jina embedding call and Cohere rerank call are truly async — they hit
 
 The brief specifies text-extractable PDFs. PyMuPDF's `get_text()` covers all standard PDF text layers with zero additional dependencies. OCR (Tesseract, EasyOCR) requires image rendering per page, GPU or heavy CPU time, and introduces accuracy variance. Adding it for scanned documents would break the "no GPU" constraint and is explicitly out of scope.
 
-## ADR-10: Single-container Docker architecture for Hugging Face Spaces
+## ADR-10: Static golden-set evaluation over online evaluation
+
+For this prototype, retrieval quality is measured using a static set of 5 golden questions derived from the sentiment analysis paper, with known expected source pages. Metrics — Recall@5 (retriever), MRR@3 and Precision@3 (reranker) — are deterministic and require no additional API calls beyond the retrieval pipeline itself. This is sufficient to catch regressions during development and demonstrate that the pipeline is working correctly.
+
+In a production system this would be replaced with continuous online evaluation: real user queries and retrieved chunks are traced automatically (via LangSmith or Arize Phoenix), and a nightly offline job scores those traces using Ragas with an LLM-as-judge. Ragas metrics — `faithfulness`, `answer_relevancy`, `context_precision`, and `context_recall` — give a more realistic picture of end-to-end quality because they evaluate against actual traffic rather than a fixed question set. This offline evaluation layer is the natural next step beyond the prototype.
+
+## ADR-11: Single-container Docker architecture for Hugging Face Spaces
 
 Hugging Face Spaces (Docker SDK) provisions exactly one container and exposes exactly one port (7860). Multi-container setups (separate frontend, backend, and broker services) are not possible without an external orchestrator. The Dockerfile therefore uses a multi-stage build: stage one compiles the Vite frontend into static assets, stage two installs the Python backend and copies those assets in. At runtime, FastAPI serves the built frontend from `/app/frontend/dist` via `StaticFiles` and handles all API routes under `/api/*` — one process, one port, zero sidecar dependencies. This also eliminates CORS configuration entirely, since the frontend and API share the same origin. The trade-off is that a code change to either layer requires rebuilding the full image, which is acceptable for a demo with infrequent deploys.
