@@ -91,7 +91,7 @@ Static retrieval metrics on 5 golden questions derived from a sentiment analysis
 - **MRR@3** — mean reciprocal rank of the correct chunk in the reranker's top 3
 - **Precision@3** — fraction of the 3 chunks sent to the LLM that are actually relevant
 
-> The eval panel requires the sentiment analysis paper to be uploaded first. Without it, all scores will be zero since the golden questions reference pages from that document.
+> **To run the eval panel:** upload the sentiment analysis paper first — [download it here](https://drive.google.com/file/d/1G6IsKNiwXK_TcTU1aHSObtMWq3VjjEis/view?usp=sharing). Without it, all scores will be zero since the golden questions reference pages from that document.
 
 Run via the Eval panel in the UI or directly:
 
