@@ -1,3 +1,13 @@
+---
+title: PaperChat
+emoji: 📄
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # PaperChat
 
 [![Python 3.11](https://img.shields.io/badge/Python-3.11-blue)](https://www.python.org/)
