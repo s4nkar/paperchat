@@ -36,7 +36,7 @@ async def _embed_batch(
             return [item["embedding"] for item in items]
 
         if attempt < _MAX_RETRIES - 1:
-            await asyncio.sleep(_RETRY_BASE**attempt)
+            await asyncio.sleep(_RETRY_BASE ** (attempt + 1))
         else:
             response.raise_for_status()
 

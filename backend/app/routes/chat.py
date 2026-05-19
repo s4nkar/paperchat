@@ -57,7 +57,7 @@ async def _stream(question: str) -> AsyncIterator[str]:
     try:
         chunks = await retrieve(question)
     except Exception as exc:
-        yield _event({"type": "error", "data": _api_error("Jina", exc)})
+        yield _event({"type": "error", "data": _api_error("Retrieval", exc)})
         return
 
     try:

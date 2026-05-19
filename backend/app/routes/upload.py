@@ -69,10 +69,14 @@ async def upload(files: list[UploadFile] = File(...)) -> list[DocumentMeta]:
         dest = UPLOAD_DIR / safe_name
         dest.write_bytes(contents)
 
-        doc = pymupdf.open(stream=contents, filetype="pdf")
-        pages = doc.page_count
-        total_chars = sum(len(doc[i].get_text("text")) for i in range(pages))
-        doc.close()
+        try:
+            doc = pymupdf.open(stream=contents, filetype="pdf")
+            pages = doc.page_count
+            total_chars = sum(len(doc[i].get_text("text")) for i in range(pages))
+            doc.close()
+        except Exception:
+            dest.unlink(missing_ok=True)
+            raise HTTPException(status_code=422, detail=f"{safe_name!r} could not be parsed as a PDF.")
 
         warning = None
         if pages > 0 and (total_chars / pages) < _MIN_CHARS_PER_PAGE:
@@ -84,14 +88,17 @@ async def upload(files: list[UploadFile] = File(...)) -> list[DocumentMeta]:
         try:
             chunk_count = await ingest_pdf(dest)
         except httpx.HTTPStatusError as exc:
+            dest.unlink(missing_ok=True)
             code = exc.response.status_code
             if code == 429:
                 raise HTTPException(status_code=503, detail="Jina rate limit reached while embedding. Please wait and try again, or upgrade your API plan.")
             if code in (401, 403):
                 raise HTTPException(status_code=503, detail="Jina API key is invalid or expired. Please check your key configuration.")
             raise HTTPException(status_code=503, detail=f"Embedding service error (HTTP {code}). Please try again.")
-        except Exception as exc:
-            raise HTTPException(status_code=503, detail=f"Ingestion failed: {exc}")
+        except Exception:
+            dest.unlink(missing_ok=True)
+            logger.exception("Unexpected ingestion failure for %s", safe_name)
+            raise HTTPException(status_code=503, detail="Ingestion failed. Please try again.")
 
         results.append(
             DocumentMeta(
