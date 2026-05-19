@@ -1,3 +1,13 @@
+---
+title: PaperChat
+emoji: 📄
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # PaperChat
 
 Upload PDFs, ask questions, get cited answers. Built with FastAPI, React, and a hybrid retrieval pipeline.
@@ -113,8 +123,24 @@ Required env vars: `JINA_API_KEY`, `GROQ_API_KEY`, `COHERE_API_KEY`
 ## Running Tests
 
 ```bash
-docker compose exec backend python -m pytest
+# Real logic tests only (no API keys needed)
+docker compose exec backend python -m pytest tests/
+
+# Including mock tests
+docker compose exec backend python -m pytest tests/ tests/mock/
+
+# Full eval against live APIs (requires real keys in .env)
+docker compose exec backend python -m pytest tests/test_eval_live.py
 ```
+
+Tests are split into two layers:
+
+| Layer | Path | What it tests |
+|---|---|---|
+| Real | `tests/` | Chunking, BM25, Chroma, RRF algorithm, metric formulas, upload validation |
+| Mock | `tests/mock/` | Embeddings client, reranker client, chat endpoint, ingest orchestrator |
+
+The mock layer exists to document the integration contract. In a production system these would hit real or containerised services.
 
 ## Running Chunking Ablation
 
