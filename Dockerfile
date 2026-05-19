@@ -19,5 +19,6 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload
 FROM backend-base AS runtime
 COPY backend/ ./
 COPY --from=frontend-builder /frontend/dist ./static
+RUN mkdir -p /data/chroma /data/uploads
 EXPOSE 7860
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
